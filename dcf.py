@@ -13,7 +13,10 @@ editable) will be created.
 Output contract (preserved across all versions of this file):
     python3 dcf.py --json
 must print a single JSON object containing at minimum:
-    intrinsic_per_share_usd, margin_of_safety_pct
+    intrinsic_per_share_usd
+NOTE: Do NOT include margin_of_safety or any market price comparison.
+The model computes intrinsic value only. Price comparison happens outside
+the model — the human does it after the research loop completes.
 """
 
 import argparse
@@ -33,7 +36,6 @@ def main() -> None:
 
     result = {
         "intrinsic_per_share_usd": None,
-        "margin_of_safety_pct": None,
         "status": "not_yet_built",
     }
 

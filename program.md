@@ -68,7 +68,7 @@ MAIN AGENT (Opus 1M)
 3. **NEVER read notes.md, finding.md, result_archive.md, dcf.py, or data/ back into main context.**
 4. **Target: < 500 tokens of MAIN AGENT conversation text per iteration.**
 5. **If you feel the urge to write a synthesis/summary → RESIST. Just do the next session.**
-6. **NO [TICKER]-COMMENTARY.** No reflections, no "let me think about this", no "interesting finding".
+6. **NO META-COMMENTARY.** No reflections, no "let me think about this", no "interesting finding".
 7. **Sub-agents have NO token limit** — they use their full 200K context freely and die after returning.
 
 ---
@@ -79,7 +79,7 @@ MAIN AGENT (Opus 1M)
 LOOP FOREVER (until human interrupts — human is asleep, DO NOT STOP):
 
 1. bash: tail -20 results.tsv
-   → This tells you: what sessions have been done, what angles covered, current IV/MOS.
+   → This tells you: what sessions have been done, what angles covered, current IV.
    → This is your ONLY memory. Do not rely on conversation context.
 
 2. Determine next session number (last session # + 1)
@@ -151,6 +151,17 @@ You can Grep across .txt files or Read PDF pages directly — your call.
 USE THESE. Primary sources over secondary. The transcript, not the summary.
 
 Use WebSearch, WebFetch, and any available tools for external data.
+
+#### PRICE BLINDNESS RULE
+Your job is to research the BUSINESS, not the STOCK. When web searching:
+- DO NOT search for current share price, analyst price targets, or market sentiment
+- DO NOT anchor findings to any share price (e.g., "at $630" or "implying X% upside")
+- If web search results contain price targets or market commentary, IGNORE that data and extract only the fundamental business data (revenue figures, cost structures, competitive dynamics, regulatory facts)
+- NEVER cite analyst price targets as evidence for anything
+- Frame all findings in terms of business value drivers (revenue, margins, growth rates, risks), NOT in terms of whether the stock is cheap or expensive
+- The only prices you should care about are PRODUCT prices (what the company charges), not STOCK prices (what the market charges)
+
+The model will determine what the business is worth. Your job is to feed it truth about the business, not opinions about the stock.
 
 ### STEP 2: APPEND TO notes.md
 
@@ -241,13 +252,21 @@ all the variables that actually drive this company's free cash flow? Revenue
 should be built from segments/units. Costs should be broken into meaningful
 categories. Growth should be DERIVED from inputs, not assumed. The model must
 have a clear PARAMETERS section (editable) and CALCULATION section (not editable).
-Include --json output with at minimum: intrinsic_per_share_usd, margin_of_safety_pct.
+Include --json output with at minimum: intrinsic_per_share_usd.
 All values in {reporting currency}.
+
+CRITICAL — PRICE BLINDNESS:
+- Do NOT include CURRENT_PRICE, MARKET_PRICE, or any share price parameter in dcf.py
+- Do NOT compute margin_of_safety in dcf.py
+- The model outputs ONLY intrinsic_per_share (in reporting currency) — NO comparison to market price
+- The --json output must include: intrinsic_per_share_usd (the key name is historical; the value is in your reporting currency)
+- Do NOT include margin_of_safety_pct in the --json output
+- The human will compare IV to market price separately, outside the model
 
 ### STEP 4: RUN dcf.py
 
 Run: python3 ./dcf.py --json
-Capture intrinsic value and margin of safety.
+Capture intrinsic value only. Do NOT compute or display any margin of safety.
 
 ### STEP 5: CHECK DIRECTION
 
@@ -260,15 +279,15 @@ Did the IV move in the expected direction?
 
 Append ONE tab-separated line to ./results.tsv:
 
-{SESSION_NUMBER}\t{parameter_change}\t{iv}\t{mos_pct}\t{direction_check}\t{short_description}
+{SESSION_NUMBER}\t{parameter_change}\t{iv}\t{direction_check}\t{short_description}
 
 Example:
-3\tsome_parameter 8%→10%\t32.50\t22.3\tCONFIRMED\tBrief description of finding
+3\tsome_parameter 8%→10%\t32.50\tCONFIRMED\tBrief description of finding
 
 Keep description under 80 characters. Use TAB separators, NOT commas.
 
 If results.tsv does not exist, create it with header:
-session\tdcf_change\tiv_usd\tmos_pct\tdirection\tshort_description
+session\tdcf_change\tiv_usd\tdirection\tshort_description
 
 ### STEP 7: RETURN TO MAIN AGENT
 
@@ -307,7 +326,7 @@ When you think you've run out of ideas:
 3. Which geographies have you NOT looked at?
 4. Cross-reference findings — do they contradict each other?
 5. Look at the same angle from a DIFFERENT source
-6. Check if the stock price has been updated recently
+6. Check which transcripts or filings in data/ you haven't read yet
 7. Look at competitors to triangulate the company's position
 8. Search with completely different keywords you haven't tried
 9. Look at adjacent industries (suppliers, platforms, cultural trends)
@@ -335,7 +354,7 @@ When you think you've run out of ideas:
 6. **CITE SOURCES** — Research agent should note where data came from in notes.md.
 7. **SUB-AGENTS USE SONNET** — Always spawn with `model: "sonnet"`.
 8. **NEVER STOP** — Loop indefinitely. Human is asleep. Only human interrupt stops the loop.
-9. **NO [TICKER]-COMMENTARY** — Don't write paragraphs about your process. Just do the next session.
+9. **NO META-COMMENTARY** — Don't write paragraphs about your process. Just do the next session.
 10. **BREADTH FIRST** — Cover many angles before going deep on any one. You have infinite sessions.
 11. **READ TRANSCRIPTS AND FILINGS** — Research agent should read relevant PDFs when angle involves management commentary or financial details.
 12. **FAIL FAST, RECOVER FAST** — If anything breaks, log it, skip it, continue. See Failure Recovery table.
@@ -345,3 +364,4 @@ When you think you've run out of ideas:
 16. **YOUR SOUL GUIDES YOU** — Let the soul section drive your research choices, not a checklist.
 17. **MODEL SHOULD GROW** — The modeler may add new parameter cells to dcf.py when research reveals value drivers not yet in the model. The model grows in sophistication over sessions. If a finding doesn't map to any existing cell, add a new one — don't force-fit.
 18. **finding.md IS EPHEMERAL** — Overwritten each session. Main agent never reads it. It exists only to pass data from researcher to modeler.
+19. **PRICE BLINDNESS** — The research loop is blind to market price. No agent searches for, cites, or anchors to the current share price or analyst price targets. IV is computed from business fundamentals only. The human compares IV to market price after the loop completes.
