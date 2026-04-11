@@ -3,6 +3,8 @@ __pycache__/
 .DS_Store
 .venv/
 venv/
+.ruff_cache/
+.mypy_cache/
 data/Transcripts/*
 data/Filings/*
 !data/Transcripts/.gitkeep
