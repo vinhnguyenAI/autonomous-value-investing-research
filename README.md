@@ -18,7 +18,7 @@ Context is the enemy. Every token the main agent accumulates is a step toward de
 
 The agent's identity lives in `soul.md`. It is not a sell-side analyst. It is a truth-seeking owner who thinks like a generalist, questions both bull and bear with equal rigor, and actively seeks data that contradicts its current model. Read `soul.md` before you run anything — that's where the philosophy lives, and nothing else in this repo makes sense without it.
 
-The **librarian** sub-sub-agent has a *different* soul (`soul_librarian.md`). It is a faithful archivist, not an analyst. It retrieves facts from the wiki without interpretation. This is deliberate: the research and modeler agents need a retrieval layer that refuses to get creative, because the wiki is only useful if what the librarian reports is what the wiki actually says.
+The **librarian** sub-sub-agent has a *different* soul (`soul_librarian.md`). It is a smart curator, not a passive archivist. It has **editorial authority over form** and **absolute neutrality over content**: it decides where a claim lives, which page it belongs on, how it connects to other topics, but it never revises a quantified number and never picks a winner when two sources disagree on a fact. The researcher owns truth; the librarian owns structure. This is how a good Wikipedia editor works.
 
 Credit where it's due: the stateless-loop framing is borrowed from [Andrej Karpathy's autoresearch](https://github.com/karpathy/autoresearch), and the wiki-as-memory pattern is adapted from [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). This repo stitches them together for equity research.
 
@@ -81,12 +81,13 @@ The agent will not stop until you interrupt it. That is intentional — the rule
 |------|---------|
 | `program.md` | The operating manual. The main agent reads this top to bottom every iteration. Do not shorten it — context discipline is in here. |
 | `soul.md` | The agent's identity. Research, modeler, and lint agents read this. **Do not edit.** |
-| `soul_librarian.md` | The librarian's distinct soul — faithful archivist, anti-interpretive. Read only by the librarian sub-sub-agent. **Do not edit.** |
+| `soul_librarian.md` | The librarian's distinct soul — smart curator with editorial authority over form, absolute neutrality over content. Read only by the librarian sub-sub-agent. **Do not edit.** |
 | `dcf.py` | The DCF model. Starts as a ~40-line stub. Grows session by session as the modeler adds value drivers. Parameter comments are capped at 80 characters — rationale lives in `wiki/drivers/`. |
 | `finding.md` | Ephemeral handoff between research and modeler agents. Overwritten every session. Ignore it. |
 | `results.tsv` | The TSV log — one line per session. This is the main agent's entire memory. |
 | `wiki/` | **The LLM-maintained knowledge base.** This is the durable memory of the system. |
-| `wiki/index.md` | Catalog of every wiki page, one-line summaries. The librarian reads this first on every query. |
+| `wiki/index.md` | Catalog of every wiki page, one-line summaries. The librarian reads this on every spawn. |
+| `wiki/conventions.md` | The librarian's Manual of Style — accumulated taxonomy, cross-reference, and supersession rules. The librarian reads this FIRST on every spawn; this is how its taste persists across sessions. |
 | `wiki/log.md` | Append-only chronological record of every wiki ingest, contradiction flag, and lint pass. |
 | `wiki/segments/` | One page per business segment. |
 | `wiki/drivers/` | One page per value driver parameter. This is where the rationale for each DCF parameter lives. |
@@ -98,13 +99,15 @@ The agent will not stop until you interrupt it. That is intentional — the rule
 
 ### The wiki
 
-The wiki is the reason this template stops being a one-shot research run and becomes a memory system. Each session's research agent doesn't just write a new note — it **updates** the affected wiki pages in place, revising quantified claims and cross-referencing related topics. By session 90, the wiki is a synthesized view of the company, not a 90-entry append log.
+The wiki is the reason this template stops being a one-shot research run and becomes a memory system. The research agent never touches wiki files directly. When it finds something new, it composes a **declarative intent** in plain language ("here's a finding, here's the source, here's what it relates to") and hands it to the librarian. The librarian reads its Manual of Style (`wiki/conventions.md`) and the wiki map (`wiki/index.md`), decides where the new claim belongs, and executes the writes. Over sessions, the wiki becomes a synthesized topic-organized view of the company, not a 90-entry append log.
 
-When the research or modeler agent needs to look something up, it doesn't read the wiki directly (that would bloat its context). It spawns a **librarian** sub-sub-agent with a different soul — one that refuses to interpret, synthesize, or editorialize. The librarian reads the wiki, returns a compressed answer with provenance paths, and dies. The caller's context stays clean.
+The **librarian is a smart curator, not a passive archivist**. It has editorial authority over *form* — where claims go, how pages are organized, which cross-references get wired, how contradictions are structured — but absolute neutrality over *content*. It never revises a quantified number, never picks a winner when two sources disagree on a fact. The researcher owns truth; the librarian owns structure. This split is what makes it safe for the librarian to have taste.
 
-If two sessions disagree on a fact, the research agent flags the contradiction in `wiki/log.md`. When three flags accumulate, the main agent spawns a **lint agent** that reconciles them — superseding, scoping, or preserving both claims depending on the case. The wiki stays internally consistent without human intervention.
+The librarian dies after every call. But its intelligence is not destroyed — it lives in `wiki/conventions.md`, which every new librarian reads on spawn and instantly inherits. This is the Wikipedia Manual of Style pattern applied to a stateless agent loop: editors come and go, but the conventions carry forward. Persistence lives in files, not in agents.
 
-This is Karpathy's LLM Wiki pattern adapted for equity research: the agent compiles a topic-organized knowledge base incrementally, and its own sub-sub-agents query it through a retrieval layer with a different soul. The main agent remains stateless. The wiki carries the memory.
+When the librarian notices a contradiction between a new finding and existing wiki content, it preserves both claims with their sources (the "Conflicting claims" pattern) and flags it in `wiki/log.md`. When three flags accumulate, the main agent spawns a **lint agent** that reconciles them — superseding, scoping, or preserving depending on the case. The wiki stays internally consistent without human intervention.
+
+This is Karpathy's LLM Wiki pattern adapted for equity research. The main agent remains stateless. The research agent's context stays bounded (never holds raw wiki content). The wiki carries the memory. The librarian carries the taste — in the file, not the agent.
 
 ---
 
