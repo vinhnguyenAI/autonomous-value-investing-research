@@ -234,14 +234,15 @@ ANTI-PATTERNS (do NOT do these):
 - Forcing a finding into an existing parameter when it should be a new parameter.
 
 If this is Session 1: Build the DCF model from scratch. Do NOT use a simple
-FCF × (1+g) formula. Build a bottom-up model with many tunable value driver
-cells that map to real business drivers. Think: what are the 15-30 key variables
-that actually drive this company's free cash flow? Revenue should be built from
-segments/units. Costs should be broken into meaningful categories. Growth
-should be DERIVED from inputs, not assumed. The model must have a clear
-PARAMETERS section (editable) and CALCULATION section (not editable).
+FCF × (1+g) formula. Build a bottom-up model with unlimited tunable value driver
+cells that map to real business drivers. There is no cap on how many parameters
+the model can hold — add as many as the business truly has. Think: what are
+all the variables that actually drive this company's free cash flow? Revenue
+should be built from segments/units. Costs should be broken into meaningful
+categories. Growth should be DERIVED from inputs, not assumed. The model must
+have a clear PARAMETERS section (editable) and CALCULATION section (not editable).
 Include --json output with at minimum: intrinsic_per_share_usd, margin_of_safety_pct.
-All values in USD.
+All values in {reporting currency}.
 
 ### STEP 4: RUN dcf.py
 
@@ -340,7 +341,7 @@ When you think you've run out of ideas:
 12. **FAIL FAST, RECOVER FAST** — If anything breaks, log it, skip it, continue. See Failure Recovery table.
 13. **TSV FORMAT** — Results go in results.tsv (tab-separated). Notes go in notes.md. Finding goes in finding.md. All written by sub-agents.
 14. **tail -20 IS YOUR MEMORY** — Main agent uses `tail -20 results.tsv` as its ONLY state check. Never read the full file.
-15. **USD DENOMINATION** — All DCF values in USD.
+15. **CONSISTENT DENOMINATION** — All DCF values in the reporting currency declared in the Stock section.
 16. **YOUR SOUL GUIDES YOU** — Let the soul section drive your research choices, not a checklist.
 17. **MODEL SHOULD GROW** — The modeler may add new parameter cells to dcf.py when research reveals value drivers not yet in the model. The model grows in sophistication over sessions. If a finding doesn't map to any existing cell, add a new one — don't force-fit.
 18. **finding.md IS EPHEMERAL** — Overwritten each session. Main agent never reads it. It exists only to pass data from researcher to modeler.
