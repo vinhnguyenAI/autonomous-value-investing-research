@@ -156,10 +156,9 @@ Use WebSearch, WebFetch, and any available tools for external data.
 Your job is to research the BUSINESS, not the STOCK. When web searching:
 - DO NOT search for current share price, analyst price targets, or market sentiment
 - DO NOT anchor findings to any share price (e.g., "at $630" or "implying X% upside")
-- If web search results contain price targets or market commentary, IGNORE that data and extract only the fundamental business data (revenue figures, cost structures, competitive dynamics, regulatory facts)
+- If web search results contain price targets or market commentary, IGNORE that data and extract only the fundamental business data 
 - NEVER cite analyst price targets as evidence for anything
-- Frame all findings in terms of business value drivers (revenue, margins, growth rates, risks), NOT in terms of whether the stock is cheap or expensive
-- The only prices you should care about are PRODUCT prices (what the company charges), not STOCK prices (what the market charges)
+- Frame all findings in terms of business value drivers, NOT in terms of whether the stock is cheap or expensive
 
 The model will determine what the business is worth. Your job is to feed it truth about the business, not opinions about the stock.
 
@@ -364,4 +363,4 @@ When you think you've run out of ideas:
 16. **YOUR SOUL GUIDES YOU** — Let the soul section drive your research choices, not a checklist.
 17. **MODEL SHOULD GROW** — The modeler may add new parameter cells to dcf.py when research reveals value drivers not yet in the model. The model grows in sophistication over sessions. If a finding doesn't map to any existing cell, add a new one — don't force-fit.
 18. **finding.md IS EPHEMERAL** — Overwritten each session. Main agent never reads it. It exists only to pass data from researcher to modeler.
-19. **PRICE BLINDNESS** — The research loop is blind to market price. No agent searches for, cites, or anchors to the current share price or analyst price targets. IV is computed from business fundamentals only. The human compares IV to market price after the loop completes.
+19. **PRICE BLINDNESS** — The research loop is blind to market price. No agent searches for, cites, or anchors to the current share price or analyst price targets. IV is computed from business fundamentals only. 
