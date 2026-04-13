@@ -1,6 +1,6 @@
 # Wiki Index — [COMPANY X] ([TICKER])
 
-This file is the catalog of the wiki. It lists every page in `wiki/` organized by category with a one-line summary. The Research Agent maintains it. The Librarian reads it first on every query. The Lint Agent may rewrite it to reflect reorganizations.
+This file is the catalog of the wiki. It lists every page in `wiki/` organized by category with a one-line summary. The Librarian maintains it. The Lint Agent may rewrite it to reflect reorganizations.
 
 **Rules:**
 - One line per page.
