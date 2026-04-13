@@ -24,8 +24,8 @@ import json
 
 
 # === PARAMETERS ===
-# Modeler Agent: inject value-driver cells here. Each parameter gets a 1-line
-# source citation comment. Detailed narrative lives in notes.md, not here.
+# Modeler Agent: inject value-driver cells here. Each parameter gets ONE
+# ≤80-char citation comment. Rationale goes to wiki/drivers/, not here.
 # === END PARAMETERS ===
 
 
