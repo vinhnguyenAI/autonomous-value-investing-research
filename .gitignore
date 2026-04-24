@@ -7,5 +7,7 @@ venv/
 .mypy_cache/
 data/Transcripts/*
 data/Filings/*
+data/YouTube/*
 !data/Transcripts/.gitkeep
 !data/Filings/.gitkeep
+!data/YouTube/.gitkeep
