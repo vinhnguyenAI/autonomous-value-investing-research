@@ -12,13 +12,17 @@ Sector analysts have been staring at the same ten stocks for years. They know ev
 
 So this repo is a fresh pair of eyes that *can*.
 
-The design is embarrassingly simple. A main agent does almost nothing: it reads one manual (`program.md`), checks the last twenty lines of a TSV file, picks a research angle, and dispatches two sub-agents. A **Research Agent** hunts through transcripts, filings, and the web for one specific question, writes what it found to a scratch file, and dies. A **Modeler Agent** reads that scratch file, edits the DCF, runs it, logs one line to the TSV, and dies. The main agent receives exactly two sentences, learns nothing, forgets everything, and starts the next session.
+The design is embarrassingly simple. A main agent does almost nothing: it reads one manual (`program.md`), checks the last twenty lines of a TSV file, picks a research angle, and dispatches a small team of sub-agents. An **R1 Company Researcher** hunts through filings, transcripts, and company disclosures for one specific question. An **R2 Industry Researcher** listens to the outside voice — YouTube talks, trade publications, competitor earnings calls — orthogonal to R1. A **Probability Agent** reads both findings, picks the single most material bet this session, quotes odds for bear/base/bull, and hands the parameters riding on that bet to a **Modeler**. The Modeler edits the DCF, runs three scenarios (base plus the bet's bear and bull), logs one line to the TSV, and dies. Every 30 sessions a **Strategist** refreshes the research agenda. Every 10 sessions a **Writer** produces one narrative episode to `story/` — the one artifact a human will actually read. The main agent receives a handful of one-sentence reports, learns nothing, forgets everything, and starts the next session.
 
 Context is the enemy. Every token the main agent accumulates is a step toward death by overflow. So the main agent refuses to remember. Its only memory is `tail -20 results.tsv`. Its only interface to the outside world is two one-sentence reports from its children. It can loop forever.
 
 The agent's identity lives in `soul.md`. It is not a sell-side analyst. It is a truth-seeking owner who thinks like a generalist, questions both bull and bear with equal rigor, and actively seeks data that contradicts its current model. Read `soul.md` before you run anything — that's where the philosophy lives, and nothing else in this repo makes sense without it.
 
+Specialized sub-agents have their own souls. `soul_industry.md` is R2's patient-listener identity. `soul_probability.md` is the bet-and-odds discipline of the Probability Agent. `soul_writer.md` is the long-form narrative voice of the Writer. They are deliberately separate so each stays in its lane.
+
 The **librarian** sub-sub-agent has a *different* soul (`soul_librarian.md`). It is a smart curator, not a passive archivist. It has **editorial authority over form** and **absolute neutrality over content**: it decides where a claim lives, which page it belongs on, how it connects to other topics, but it never revises a quantified number and never picks a winner when two sources disagree on a fact. The researcher owns truth; the librarian owns structure. This is how a good Wikipedia editor works.
+
+The Writer Agent spawns a **second, different librarian** (`soul_librarian_for_writer.md`) — pointer-first, read-only wiki, story/-blind. It is a map-giver for a journalist on deadline, not a curator. The two librarian souls must never be merged or shared across boundaries.
 
 Credit where it's due: the stateless-loop framing is borrowed from [Andrej Karpathy's autoresearch](https://github.com/karpathy/autoresearch), and the wiki-as-memory pattern is adapted from [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). This repo stitches them together for equity research.
 
@@ -28,37 +32,50 @@ Credit where it's due: the stateless-loop framing is borrowed from [Andrej Karpa
 
 ```
 MAIN AGENT (Opus 1M — stateless orchestrator)
-┌─────────────────────────┐
-│ Reads ONLY:             │        RESEARCH AGENT (Sonnet — soul.md)
-│  - program.md           │ spawn  ┌────────────────────────────┐
-│  - tail -20 tsv         │ ─────> │ 1. spawn LIBRARIAN         │
-│                         │        │ 2. read primary sources    │
-│ NEVER reads:            │        │ 3. INGEST into wiki/       │
-│  - dcf.py               │        │ 4. write finding.md        │
-│  - finding.md           │ <───── │ 5. return 1 sentence       │
-│  - wiki/                │ 1 sent └──────────┬─────────────────┘
-│  - data/                │                   │ spawn
-│                         │                   ▼
-│ Receives 2 sentences:   │        LIBRARIAN (Sonnet — soul_librarian.md)
-│  - 1 from research      │        ┌────────────────────────────┐
-│  - 1 from modeler       │        │ - Reads wiki/ only         │
-│  - (+1 from lint, rare) │        │ - Anti-interpretive soul   │
-│                         │        │ - Returns compressed answer│
-│                         │        └────────────────────────────┘
-│                         │
-│                         │        MODELER AGENT (Sonnet — soul.md)
-│                         │ spawn  ┌────────────────────────────┐
-│                         │ ─────> │ 1. spawn LIBRARIAN         │
-│                         │        │ 2. read finding.md + dcf.py│
-│                         │        │ 3. edit dcf.py (80-char    │
-│                         │        │    comments, REPLACE rule) │
-│                         │        │ 4. run dcf.py --json       │
-│                         │        │ 5. append results.tsv      │
-│                         │ <───── │ 6. return 1 sentence       │
-└─────────────────────────┘ 1 sent └────────────────────────────┘
+Reads ONLY: program.md + tail -20 results.tsv + research_agenda.md (if exists)
+NEVER reads: dcf.py, finding.md, finding_industry.md, probabilities.md, wiki/, data/, story/
+
+  │
+  ├─ STRATEGIST (Sonnet — soul.md) — every 30 sessions
+  │    Refreshes research_agenda.md (ranked top-5 R1 + R2 priorities)
+  │
+  ├─ R1 COMPANY RESEARCHER (Sonnet — soul.md)
+  │    Filings, transcripts, press releases. Spawns Librarian QUERY then WRITE.
+  │    Writes finding.md, returns 1 sentence.
+  │
+  ├─ R2 INDUSTRY RESEARCHER (Sonnet — soul_industry.md)
+  │    YouTube via Supadata, trade pubs, competitor filings. Orthogonal to R1.
+  │    Writes finding_industry.md, returns 1 sentence.
+  │
+  ├─ PROBABILITY AGENT (Opus — soul_probability.md)
+  │    Picks the ONE most material bet this session. Quotes bear/base/bull odds.
+  │    Persists durable odds to wiki via Librarian WRITE.
+  │    Writes probabilities.md, returns 1 structured sentence (bet + odds).
+  │
+  ├─ MODELER (Sonnet — soul.md) — once session ≥ MODELER_START_SESSION
+  │    Reads all three handoff files + dcf.py. Runs dcf.py three times
+  │    (base, bear-on-the-bet, bull-on-the-bet). Appends results.tsv.
+  │    Returns 1 sentence with direction check.
+  │
+  ├─ LIBRARIAN (default, Sonnet — soul_librarian.md) — depth-2 sub-sub-agent
+  │    SMART CURATOR. Editorial authority over form. Neutral on content.
+  │    Spawned by R1, R2, Probability, Modeler, Lint. NEVER by main.
+  │
+  ├─ LIBRARIAN (Writer-scoped, Sonnet — soul_librarian_for_writer.md)
+  │    POINTER-FIRST. Read-only wiki. story/-blind. Spawned ONLY by Writer.
+  │
+  ├─ BROWSER INTERN (Sonnet — SOULLESS tool) — depth-2, optional per caller
+  │    Extracts text from JS-rendered public pages. 90s cap. ≤2000 tokens.
+  │
+  ├─ LINT AGENT (Sonnet — soul.md) — contradiction-triggered, rare
+  │    Reconciles flagged contradictions, merges duplicates, splits bloat.
+  │
+  └─ WRITER AGENT (Opus — soul_writer.md) — every 10 sessions
+       Writes one 600–800 word narrative episode to story/.
+       Returns the literal string `done`.
 ```
 
-The main agent does **one thing per iteration**: spawn → receive → spawn → receive → loop. No summarizing, no reflecting, no "interesting finding" commentary. Just the next session. Each sub-agent spawns its own librarian sub-sub-agent to query the wiki without polluting its own context.
+The main agent does **one thing per iteration**: spawn the agenda-setters and researchers, receive one sentence from each, and loop. No summarizing, no reflecting, no "interesting finding" commentary. Just the next session. Each research/modeling sub-agent spawns its own Librarian sub-sub-agent to query or write the wiki without polluting its own context. The Writer spawns a different, more restricted Librarian. The `story/` folder is quarantined — only the Writer reads or writes it.
 
 ---
 
@@ -80,12 +97,19 @@ The agent will not stop until you interrupt it. That is intentional — the rule
 | File | Purpose |
 |------|---------|
 | `program.md` | The operating manual. The main agent reads this top to bottom every iteration. Do not shorten it — context discipline is in here. |
-| `soul.md` | The agent's identity. Research, modeler, and lint agents read this. **Do not edit.** |
-| `soul_librarian.md` | The librarian's distinct soul — smart curator with editorial authority over form, absolute neutrality over content. Read only by the librarian sub-sub-agent. **Do not edit.** |
-| `dcf.py` | The DCF model. Starts as a ~40-line stub. Grows session by session as the modeler adds value drivers. Parameter comments are capped at 80 characters — rationale lives in `wiki/drivers/`. |
-| `finding.md` | Ephemeral handoff between research and modeler agents. Overwritten every session. Ignore it. |
-| `results.tsv` | The TSV log — one line per session. This is the main agent's entire memory. |
-| `wiki/` | **The LLM-maintained knowledge base.** This is the durable memory of the system. |
+| `soul.md` | The researcher's identity. R1, Modeler, Strategist, and Lint read this. **Do not edit.** |
+| `soul_industry.md` | R2's identity — the patient listener. Competitor / trade / YouTube voice. **Do not edit.** |
+| `soul_probability.md` | The Probability Agent's identity — bets, odds, statistical discipline. **Do not edit.** |
+| `soul_writer.md` | The Writer's identity — long-form narrative, plan-before-write. **Do not edit.** |
+| `soul_librarian.md` | The default librarian's soul — smart curator with editorial authority over form, absolute neutrality over content. Read only by the librarian sub-sub-agent. **Do not edit.** |
+| `soul_librarian_for_writer.md` | Writer-scoped librarian soul — pointer-first, read-only wiki, story/-blind. Read only by the Writer's librarian. **Do not edit.** |
+| `dcf.py` | The DCF model. Starts as a stub. Grows session by session as the modeler adds value drivers. Parameter comments are capped at 80 characters — rationale lives in `wiki/drivers/`. |
+| `finding.md` | R1's ephemeral handoff to the Modeler. Overwritten every session. |
+| `finding_industry.md` | R2's ephemeral handoff to the Probability Agent and Modeler. Overwritten every session. |
+| `probabilities.md` | Probability Agent's ephemeral handoff to the Modeler (THE_BET + ODDS + PARAMETERS_ON_THE_BET). Durable odds live in the wiki; this file is overwritten every session. |
+| `research_agenda.md` | Strategist's ranked priorities for the next 30 sessions (created only once session ≥ 30). Main agent reads this; R1 and R2 align to it. |
+| `results.tsv` | The TSV log — one line per session. This is the main agent's primary memory. |
+| `wiki/` | **The LLM-maintained knowledge base.** The durable memory of the system. |
 | `wiki/index.md` | Catalog of every wiki page, one-line summaries. The librarian reads this on every spawn. |
 | `wiki/conventions.md` | The librarian's Manual of Style — accumulated taxonomy, cross-reference, and supersession rules. The librarian reads this FIRST on every spawn; this is how its taste persists across sessions. |
 | `wiki/log.md` | Append-only chronological record of every wiki ingest, contradiction flag, and lint pass. |
@@ -94,8 +118,10 @@ The agent will not stop until you interrupt it. That is intentional — the rule
 | `wiki/risks/` | One page per identified risk (regulatory, geographic, competitive, etc.). |
 | `wiki/people/` | One page per key executive. |
 | `wiki/themes/` | Cross-cutting themes that span multiple segments or drivers. |
-| `data/Transcripts/` | Earnings call and conference transcripts. Primary sources. |
-| `data/Filings/` | Annual reports, 10-Ks, 10-Qs. Primary sources. |
+| `story/` | **Writer-exclusive.** One 600–800 word narrative episode per 10 sessions. Quarantined from every other agent. Human reads this as a book. |
+| `data/Transcripts/` | Earnings call and conference transcripts. Primary sources for R1. |
+| `data/Filings/` | Annual reports, 10-Ks, 10-Qs. Primary sources for R1. |
+| `data/YouTube/` | Supadata-fetched YouTube transcripts. Primary sources for R2. |
 
 ### The wiki
 
