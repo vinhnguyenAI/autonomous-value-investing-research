@@ -818,6 +818,42 @@ ANTI-PATTERNS (do NOT do these):
 
 If this is Session 1 (or the first time session ≥ MODELER_START_SESSION with an empty dcf.py): Build the DCF model from scratch. Do NOT use a simple FCF × (1+g) formula. Build a bottom-up model with unlimited tunable value driver cells that map to real business drivers. There is no cap on how many parameters the model can hold — add as many as the business truly has. Think: what are all the variables that actually drive this company's free cash flow? Revenue should be built from segments/units. Costs should be broken into meaningful categories. Growth should be DERIVED from inputs, not assumed. The model must have a clear PARAMETERS section (editable) and CALCULATION section (not editable). Include --json output with at minimum: intrinsic_per_share_usd (key name is historical; value is in your reporting currency).
 
+PARAMETER DENSITY EXPECTATION:
+A mature model on a non-trivial business holds dozens of driver cells and may grow well past a hundred. Density that maps to real business mechanics is the target; numerical compactness is not. Err on the side of MORE granular drivers when research surfaces a distinct causal mechanism, not fewer.
+
+CANONICAL FUNCTIONAL BUCKETS — organise PARAMETERS under `# --- {bucket} ---` sub-headers:
+- Segment revenue drivers (one band per reported segment; units × price decomposition, or the segment-appropriate analogue)
+- Cost structure (split by line item management actually steers: unit cost, headcount cost, input cost, distribution cost, marketing cost, etc.)
+- Capex schedule (explicit-year where the company guides it; stage-scalar otherwise)
+- D&A
+- Working capital
+- Tax
+- WACC (phased only where the cost of capital genuinely shifts across the explicit horizon)
+- Terminal growth
+- Capital structure bridge (cash, debt, leases, share count, dilution from convertibles/awards)
+- Horizon flags (explicit year count, model start year)
+- Optional buckets where the business warrants them: contingent liabilities, seasonality overlays, ramp economics for new units, regulatory/carbon transitions, treasury float, one-off provisions
+
+STAGE NAMING CONVENTION:
+Use `{driver}_{stage}` where stage ∈ {`fy{baseline_year}`, `yr1_3`, `yr4_7`, `terminal`} or analogous explicit-year tags. Always include a baseline-year scalar AND at least one forward stage per non-trivial driver.
+
+PER-YEAR ARRAY DISCIPLINE:
+Do NOT store year arrays as PARAMETERS — they break the bear/bull sed override pattern in STEP 5. Construct per-year vectors inside CALCULATION from stage scalars (e.g. `[p(yr1_3)] * 3 + [p(yr4_7)] * 4 + [p(terminal)]`).
+
+SUB-KNOB DECOMPOSITION:
+When a single growth rate or margin spans multiple distinct causal drivers cited in the research, decompose into 2-5 named sub-knobs that aggregate via an explicit formula in CALCULATION. Name them `{parent}_{driver}_{stage}`. This lets the Probability Agent wire a bet to the exact sub-knob without dragging unrelated drivers along.
+
+OUTPUT DICT — REQUIRED AND DIAGNOSTIC:
+The `--json` dict must contain `intrinsic_per_share_usd` (key name is historical; value is in your reporting currency). It SHOULD also expose, for downstream agent interpretability:
+- `enterprise_value_bn`, `equity_value_bn`
+- `pv_explicit_fcf_bn`, `pv_tv_bn`
+- `terminal_fcf_bn`, `terminal_value_bn`
+- `wacc`, `terminal_growth`
+- `year1_revenue_bn`, `year1_fcf_bn`, `year_n_revenue_bn`, `year_n_fcf_bn`
+
+OVERRIDE PATTERN:
+Argparse exposes `--json` and repeatable `--override NAME=VALUE`. The override must reach sub-knobs, not just top-level scalars. The simplest pattern is a `p(name)` accessor that reads override dict first then `globals()`; the alternative is a `global` recompute block at the top of the run function that re-derives aggregate params from sub-knobs. Either works — keep one pattern consistent across the file.
+
 CRITICAL — PRICE BLINDNESS:
 - Do NOT include CURRENT_PRICE, MARKET_PRICE, or any share price parameter in dcf.py
 - Do NOT compute margin_of_safety in dcf.py
