@@ -12,7 +12,9 @@ Sector analysts have been staring at the same ten stocks for years. They know ev
 
 So this repo is a fresh pair of eyes that *can*.
 
-The design is embarrassingly simple. A main agent does almost nothing: it reads one manual (`program.md`), checks the last twenty lines of a TSV file, picks a research angle, and dispatches a small team of sub-agents. An **R1 Company Researcher** hunts through filings, transcripts, and company disclosures for one specific question. An **R2 Industry Researcher** listens to the outside voice — YouTube talks, trade publications, competitor earnings calls — orthogonal to R1. A **Probability Agent** reads both findings, picks the single most material bet this session, quotes odds for bear/base/bull, and hands the parameters riding on that bet to a **Modeler**. The Modeler edits the DCF, runs three scenarios (base plus the bet's bear and bull), logs one line to the TSV, and dies. Every 30 sessions a **Strategist** refreshes the research agenda. Every 10 sessions a **Writer** produces one narrative episode to `story/` — the one artifact a human will actually read. The main agent receives a handful of one-sentence reports, learns nothing, forgets everything, and starts the next session.
+The design is embarrassingly simple. A main agent does almost nothing: it reads one manual (`program.md`), checks the last twenty lines of a TSV file, picks a research angle, and dispatches a small team of sub-agents. An **R1 Company Researcher** hunts through filings, transcripts, and company disclosures for one specific question. An **R2 Industry Researcher** listens to the outside voice — YouTube talks, trade publications, competitor earnings calls — orthogonal to R1. A **Probability Agent** reads both findings, picks the single most material bet this session, quotes odds for bear/base/bull, and hands the parameters riding on that bet to a **Modeler**. The Modeler picks ONE driver candidate from the three handoffs, wires it into `dcf.py` with a `# data/...` source pointer in the comment, commits, and dies. A **Verifier Agent** then runs `dcf_score.py` — an external auditor that perturbs every parameter and counts how many actually move IV AND carry a sourced citation. That count is the **`driver_count`** metric. If `driver_count` grew, the commit stays. If it didn't, the main agent runs `git reset --hard HEAD~1` and the bad commit disappears — the same ratchet as Karpathy's autoresearch. The Verifier writes one row to the TSV before returning, so the failed attempt is preserved as historical record even after the reset. Every 30 sessions a **Strategist** refreshes the research agenda. Every 10 sessions a **Writer** produces one narrative episode to `story/` — the one artifact a human will actually read. The main agent receives a handful of one-sentence reports, learns nothing, forgets everything, and starts the next session.
+
+The metric the loop optimises is *breadth*, not IV. Chasing IV directionally produces a model with three knobs tuned to confirm a thesis; ratcheting on `driver_count` produces a model that grows in mechanical fidelity to the business one sourced driver at a time. After 100+ sessions the DCF has dozens-to-hundreds of tunable cells, each tied to a primary source, each demonstrably affecting intrinsic value. That is the artifact worth reading.
 
 Context is the enemy. Every token the main agent accumulates is a step toward death by overflow. So the main agent refuses to remember. Its only memory is `tail -20 results.tsv`. Its only interface to the outside world is two one-sentence reports from its children. It can loop forever.
 
@@ -53,9 +55,16 @@ NEVER reads: dcf.py, finding.md, finding_industry.md, probabilities.md, wiki/, d
   │    Writes probabilities.md, returns 1 structured sentence (bet + odds).
   │
   ├─ MODELER (Sonnet — soul.md) — once session ≥ MODELER_START_SESSION
-  │    Reads all three handoff files + dcf.py. Runs dcf.py three times
-  │    (base, bear-on-the-bet, bull-on-the-bet). Appends results.tsv.
-  │    Returns 1 sentence with direction check.
+  │    Reads all three handoff files + dcf.py. Picks ONE driver candidate.
+  │    Adds/splits/refactors it with a `# data/...` source pointer.
+  │    Exactly ONE commit per session. Does NOT write results.tsv.
+  │    Returns 1 sentence (includes commit SHA).
+  │
+  ├─ VERIFIER (Sonnet — embedded soul) — always after Modeler
+  │    Runs `python3 dcf_score.py` to compute new driver_count.
+  │    Compares to prior count, picks status (up/flat/down/crash) and
+  │    action (continue / git reset / no reset needed). Appends ONE
+  │    row to results.tsv BEFORE returning. Returns 1 sentence.
   │
   ├─ LIBRARIAN (default, Sonnet — soul_librarian.md) — depth-2 sub-sub-agent
   │    SMART CURATOR. Editorial authority over form. Neutral on content.
@@ -103,12 +112,13 @@ The agent will not stop until you interrupt it. That is intentional — the rule
 | `soul_writer.md` | The Writer's identity — long-form narrative, plan-before-write. **Do not edit.** |
 | `soul_librarian.md` | The default librarian's soul — smart curator with editorial authority over form, absolute neutrality over content. Read only by the librarian sub-sub-agent. **Do not edit.** |
 | `soul_librarian_for_writer.md` | Writer-scoped librarian soul — pointer-first, read-only wiki, story/-blind. Read only by the Writer's librarian. **Do not edit.** |
-| `dcf.py` | The DCF model. Starts as a stub. Grows session by session as the modeler adds value drivers. Parameter comments are capped at 80 characters — rationale lives in `wiki/drivers/`. |
-| `finding.md` | R1's ephemeral handoff to the Modeler. Overwritten every session. |
+| `dcf.py` | The DCF model. Starts as a stub. Grows session by session as the Modeler adds ONE driver per session, each carrying a `# data/...` source pointer. Parameter comments are capped at 80 characters — rationale lives in `wiki/drivers/`. |
+| `dcf_score.py` | The external auditor. Computes `driver_count` — the number of parameters that (a) carry a `# data/...` pointer AND (b) move IV when perturbed. Read-only — agents must NOT edit it. The Verifier Agent runs it after every Modeler commit. |
+| `finding.md` | R1's ephemeral handoff to the Modeler. Overwritten every session. Starts with a DRIVER_CANDIDATE block so the Modeler can wire it directly. |
 | `finding_industry.md` | R2's ephemeral handoff to the Probability Agent and Modeler. Overwritten every session. |
 | `probabilities.md` | Probability Agent's ephemeral handoff to the Modeler (THE_BET + ODDS + PARAMETERS_ON_THE_BET). Durable odds live in the wiki; this file is overwritten every session. |
 | `research_agenda.md` | Strategist's ranked priorities for the next 30 sessions (created only once session ≥ 30). Main agent reads this; R1 and R2 align to it. |
-| `results.tsv` | The TSV log — one line per session. This is the main agent's primary memory. |
+| `results.tsv` | The TSV log — one line per session. Schema: `session  commit_sha  driver_count  status  description`. This is the main agent's primary memory (it reads `tail -20`). Untracked, so it survives `git reset --hard HEAD~1`. |
 | `wiki/` | **The LLM-maintained knowledge base.** The durable memory of the system. |
 | `wiki/index.md` | Catalog of every wiki page, one-line summaries. The librarian reads this on every spawn. |
 | `wiki/conventions.md` | The librarian's Manual of Style — accumulated taxonomy, cross-reference, and supersession rules. The librarian reads this FIRST on every spawn; this is how its taste persists across sessions. |

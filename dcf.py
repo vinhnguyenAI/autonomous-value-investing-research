@@ -28,7 +28,8 @@ new units, regulatory transitions, treasury float).
 Stage naming convention: {driver}_{stage} where stage is one of
 fy_base | yr1_3 | yr4_7 | terminal (or analogous explicit-year tags).
 Per-year arrays are constructed inside CALCULATION from stage scalars;
-do not store lists as parameters — they break the bear/bull sed override.
+do not store lists as parameters — they break the dcf_score.py per-knob
+override pass that produces the `driver_count` metric.
 
 Sub-knob decomposition: when a single growth rate or margin spans multiple
 distinct causal drivers cited in research, split it into 2-5 named
