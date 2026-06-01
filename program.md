@@ -145,7 +145,7 @@ Target: <500 tokens of conversation per iteration
 - Main agent receives 4 sentences per session normal (R1 + R2 + Probability + Verifier), 5 on strategist sessions, +1 if Writer runs (`done`), +1 if Lint runs. Target: < 500 tokens per iteration.
 - `finding.md`, `finding_industry.md`, `probabilities.md` are ephemeral handoffs — OVERWRITTEN each session. Wiki is the durable memory, maintained exclusively by the librarian.
 - **Persistence of taste:** the librarian dies every call, but `wiki/conventions.md` carries its accumulated taxonomy decisions forward. Every new librarian reads it on spawn and inherits the full prior judgment.
-- **MODELER_START_SESSION = 15** (template default — the first 14 sessions are research-only so the wiki is built before the DCF stub is populated; modeler runs from session 15 onward). Tunable per project: companies with rich starting data may set it lower (e.g. 1, so the modeler runs every session from day one).
+- **MODELER_START_SESSION = 15** (template default — the first 14 sessions are research-only so the wiki is built before the modeler replaces the generic template drivers with real ones; modeler runs from session 15 onward). Tunable per project: companies with rich starting data may set it lower (e.g. 1, so the modeler runs every session from day one).
 - **STRATEGIST_INTERVAL = 30.** Main agent spawns the Strategist every 30 sessions, OR when session ≥ 30 and no `research_agenda.md` exists.
 - **WRITER_INTERVAL = 10.** Main agent spawns the Writer every 10 sessions. Writer produces one narrative episode to `story/` and returns the literal string `done`.
 - Main agent's forbidden reads: `finding.md`, `finding_industry.md`, `probabilities.md`, `dcf.py`, `wiki/`, `data/`, `story/`.
@@ -840,7 +840,7 @@ Do NOT return the full probabilities.md. It is on disk for the modeler. Do NOT e
 
 ## Modeler Agent Instructions
 
-(Copy this ENTIRE section into every modeler agent prompt. Main agent only spawns the modeler when `session >= MODELER_START_SESSION`. Template default: MODELER_START_SESSION = 15 — the first 14 sessions are research-only, building the wiki before any DCF stub is populated. Companies with rich starting data may set MODELER_START_SESSION = 1 so the modeler runs every session from day one.)
+(Copy this ENTIRE section into every modeler agent prompt. Main agent only spawns the modeler when `session >= MODELER_START_SESSION`. Template default: MODELER_START_SESSION = 15 — the first 14 sessions are research-only, building the wiki before the modeler replaces the generic template drivers with real ones. Companies with rich starting data may set MODELER_START_SESSION = 1 so the modeler runs every session from day one.)
 
 ```
 ### YOUR SOUL
@@ -911,7 +911,7 @@ ANTI-PATTERNS (do NOT do these):
 - Forcing a finding into an existing parameter when it should be a new parameter.
 - Dumping the librarian's multi-sentence summary into a dcf.py comment.
 
-If this is the FIRST modeling session (the first time session ≥ MODELER_START_SESSION with an empty dcf.py): Build the DCF model from scratch. Do NOT use a simple FCF × (1+g) formula. Build a bottom-up model with unlimited tunable value driver cells that map to real business drivers. There is no cap on how many parameters the model can hold — add as many as the business truly has. Think: what are all the variables that actually drive this company's free cash flow? Revenue should be built from segments/units. Costs should be broken into meaningful categories. Growth should be DERIVED from inputs, not assumed. The model must have a clear PARAMETERS section (editable) and CALCULATION section (not editable). Include --json output with at minimum: intrinsic_per_share_usd (key name is historical; value is in your reporting currency).
+If this is the FIRST modeling session (the first time session ≥ MODELER_START_SESSION with dcf.py still holding the generic template drivers): Replace the generic template drivers with real, source-cited drivers and expand the structure. Keep the bottom-up form already in dcf.py — do NOT collapse it to a simple FCF × (1+g) formula. Expand it with as many tunable value driver cells as the business truly has; there is no cap on parameter count. Think: what are all the variables that actually drive this company's free cash flow? Revenue should be built from segments/units. Costs should be broken into meaningful categories. Growth should be DERIVED from inputs, not assumed. Preserve the existing PARAMETERS section (editable), CALCULATION section (not editable), and the `=== PARAMETERS` / `=== END PARAMETERS` markers dcf_score.py depends on. Include --json output with at minimum: intrinsic_per_share_usd (key name is historical; value is in your reporting currency).
 
 PARAMETER DENSITY EXPECTATION:
 A mature model on a non-trivial business holds dozens of driver cells and may grow well past a hundred. Density that maps to real business mechanics is the target; numerical compactness is not. Err on the side of MORE granular drivers when research surfaces a distinct causal mechanism, not fewer.
